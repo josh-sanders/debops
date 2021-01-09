@@ -1,0 +1,30 @@
+---
+# Copyright (C) 2020 CipherMail B.V. <https://www.ciphermail.com/>
+# Copyright (C) 2020 DebOps <https://debops.org/>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- name: Manage PowerDNS authoritative server
+  hosts: [ 'debops_service_powerdns_auth' ]
+  become: True
+
+  environment: '{{ inventory__environment | d({})
+                   | combine(inventory__group_environment | d({}))
+                   | combine(inventory__host_environment  | d({})) }}'
+
+  roles:
+
+    - role: secret
+
+    - role: ferm
+      tags: [ 'role::ferm', 'skip::ferm' ]
+      ferm__dependent_rules:
+        - '{{ powerdns_auth__ferm__dependent_rules }}'
+
+    - role: postgresql
+      tags: [ 'role::postgresql', 'skip::postgresql' ]
+      postgresql__dependent_roles:
+        - '{{ powerdns_auth__postgresql__dependent_roles }}'
+      when: ('gpgsql' in powerdns_auth__backends)
+
+    - role: powerdns_auth
+      tags: [ 'role::powerdns_auth', 'skip::powerdns_auth' ]

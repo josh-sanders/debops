@@ -1,0 +1,86 @@
+---
+# Copyright (C) 2020 CipherMail B.V. <https://www.ciphermail.com/>
+# Copyright (C) 2020 DebOps <https://debops.org/>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+powerdns_auth__base_packages: [ 'pdns-server' ]
+powerdns_auth__packages: '{{ [ "pdns-backend-pgsql" ]
+                             if "gpgsql" in powerdns_auth__backends
+                             else [] }}'
+
+powerdns_auth__allow: [ '0.0.0.0/0', '::/0' ]
+
+powerdns_auth__local_address: [ '0.0.0.0' ]
+powerdns_auth__local_ipv6: [ '::' ]
+powerdns_auth__local_port: 53
+powerdns_auth__resolvers: '{{ ansible_local.resolvconf.nameservers
+                              if (ansible_local|d() and
+                                  ansible_local.resolvconf|d() and
+                                  ansible_local.resolvconf.nameservers|d())
+                              else ansible_dns.nameservers }}'
+powerdns_auth__also_notify: []
+powerdns_auth__allow_axfr_ips: '{{ powerdns_auth__also_notify }}'
+
+powerdns_auth__master: False
+powerdns_auth__slave: False
+powerdns_auth__api: False
+powerdns_auth__api_key: '{{ lookup("password", secret + "/powerdns_auth/"
+                                               + ansible_fqdn
+                                               + "/api_key chars=ascii_letters,digits length=22")
+                            if powerdns_auth__api
+                            else "" }}'
+
+powerdns_auth__default_soa_edit: ''
+powerdns_auth__default_soa_edit_signed: 'INCEPTION-INCREMENT'
+
+# Dynamic DNS Update (RFC 2136)
+# See https://doc.powerdns.com/authoritative/dnsupdate.html
+powerdns_auth__dnsupdate: False
+powerdns_auth__allow_dnsupdate_from: []
+
+powerdns_auth__custom_settings: {}
+
+powerdns_auth__backends: [ 'gpgsql' ]
+powerdns_auth__backends_dnssec: [ 'gpgsql' ]
+
+powerdns_auth__postgresql_delegate_to: '{{ ansible_local.postgresql.delegate_to
+                                           if (ansible_local|d() and
+                                               ansible_local.postgresql|d() and
+                                               ansible_local.postgresql.delegate_to|d())
+                                           else ansible_fqdn }}'
+powerdns_auth__postgresql_server: '{{ ansible_local.postgresql.server
+                                      if (ansible_local|d() and
+                                          ansible_local.postgresql|d() and
+                                          ansible_local.postgresql.server|d())
+                                      else "localhost" }}'
+powerdns_auth__postgresql_port: '{{ ansible_local.postgresql.port
+                                    if (ansible_local|d() and
+                                        ansible_local.postgresql|d() and
+                                        ansible_local.postgresql.port|d())
+                                    else "5432" }}'
+
+powerdns_auth__postgresql_database: 'pdns'
+powerdns_auth__postgresql_role: 'pdns'
+powerdns_auth__postgresql_password: '{{ lookup("password", secret + "/postgresql/"
+                                                           + powerdns_auth__postgresql_delegate_to + "/"
+                                                           + powerdns_auth__postgresql_port + "/credentials/"
+                                                           + powerdns_auth__postgresql_role
+                                                           + "/password chars=ascii_letters,digits length=22")
+                                        if "gpgsql" in powerdns_auth__backends
+                                        else "" }}'
+powerdns_auth__postgresql_schema: '/usr/share/pdns-backend-pgsql/schema/schema.pgsql.sql'
+
+powerdns_auth__ferm__dependent_rules:
+
+  - name: 'powerdns_auth'
+    by_role: 'debops.powerdns_auth'
+    type: 'accept'
+    protocol: [ 'tcp', 'udp' ]
+    dport: [ '{{ powerdns_auth__local_port|string }}' ]
+    saddr: '{{ powerdns_auth__allow }}'
+
+powerdns_auth__postgresql__dependent_roles:
+
+  - role: '{{ powerdns_auth__postgresql_role }}'
+    port: '{{ powerdns_auth__postgresql_port }}'
+    password: '{{ powerdns_auth__postgresql_password }}'

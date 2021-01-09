@@ -1,0 +1,53 @@
+{# Copyright (C) 2020 CipherMail B.V. <https://www.ciphermail.com/>
+ # Copyright (C) 2020 DebOps <https://debops.org/>
+ # SPDX-License-Identifier: GPL-3.0-or-later
+ #}
+# {{ ansible_managed }}
+
+local-address={{ powerdns_auth__local_address|join(",") }}
+local-ipv6={{ powerdns_auth__local_ipv6|join(",") }}
+local-port={{ powerdns_auth__local_port }}
+
+resolver={{ powerdns_auth__resolvers|join(",") }}
+allow-axfr-ips={{ powerdns_auth__allow_axfr_ips|join(",") }}
+also-notify={{ powerdns_auth__also_notify|join(",") }}
+
+{% if powerdns_auth__master %}
+master=yes
+{% endif %}
+{% if powerdns_auth__slave %}
+slave=yes
+{% endif %}
+
+{% if powerdns_auth__api %}
+api=yes
+api-key={{ powerdns_auth__api_key }}
+{% endif %}
+
+default-soa-edit={{ powerdns_auth__default_soa_edit }}
+default-soa-edit-signed={{ powerdns_auth__default_soa_edit_signed }}
+
+{% if powerdns_auth__dnsupdate %}
+# Dynamic DNS Update (RFC 2136)
+# See https://doc.powerdns.com/authoritative/dnsupdate.html
+dnsupdate=yes
+allow-dnsupdate-from={{ powerdns_auth__allow_dnsupdate_from|join(",") }}
+{% endif %}
+
+{% if 'gpgsql' in powerdns_auth__backends %}
+launch+=gpgsql
+gpgsql-host={{ powerdns_auth__postgresql_server }}
+gpgsql-port={{ powerdns_auth__postgresql_port }}
+gpgsql-dbname={{ powerdns_auth__postgresql_database }}
+gpgsql-user={{ powerdns_auth__postgresql_role }}
+gpgsql-password={{ powerdns_auth__postgresql_password }}
+gpgsql-dnssec={{ "yes"
+                 if 'gpgsql' in powerdns_auth__backends_dnssec
+                 else "no" }}
+{% endif %}
+
+{% if powerdns_auth__custom_settings %}
+{% for key in powerdns_auth__custom_settings %}
+{{ key }}={{ powerdns_auth__custom_settings[key] }}
+{% endfor %}
+{% endif %}

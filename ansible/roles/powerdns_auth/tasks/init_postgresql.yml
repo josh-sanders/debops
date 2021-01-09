@@ -1,0 +1,21 @@
+---
+# Copyright (C) 2020 CipherMail B.V. <https://www.ciphermail.com/>
+# Copyright (C) 2020 DebOps <https://debops.org/>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- name: Create PostgreSQL database
+  postgresql_db:
+    name: '{{ powerdns_auth__postgresql_database }}'
+    owner: '{{ powerdns_auth__postgresql_role }}'
+    state: 'present'
+  delegate_to: '{{ powerdns_auth__postgresql_delegate_to }}'
+  register: powerdns_auth__register_postgresql_status
+
+- name: Import initial database schema
+  postgresql_db:
+    login_user: '{{ powerdns_auth__postgresql_role }}'
+    login_password: '{{ powerdns_auth__postgresql_password }}'
+    name: '{{ powerdns_auth__postgresql_database }}'
+    target: '{{ powerdns_auth__postgresql_schema }}'
+    state: 'restore'
+  when: powerdns_auth__register_postgresql_status is changed
